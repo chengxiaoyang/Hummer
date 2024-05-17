@@ -24,6 +24,7 @@
 
 @property (nonatomic, strong) HMJSContext  *context;
 @property (nonatomic, strong) HMBaseValue *renderPage;
+//RootView生命周期函数
 @property (nonatomic, strong) HMRootViewLifeCycle *lifeCycle;
 
 
@@ -141,6 +142,7 @@
     
     //渲染脚本之前 注册bridge
     NSString *namespace = nil;
+    //没有搞懂这是干嘛的
     if ([self respondsToSelector:@selector(hm_namespace)]) {
         namespace = [self hm_namespace];
     }

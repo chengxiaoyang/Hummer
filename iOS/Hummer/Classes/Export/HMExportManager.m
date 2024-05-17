@@ -48,12 +48,21 @@ static id _sharedInstance = nil;
     if (self.jsClasses.count > 0 || self.objcClasses.count > 0) {
         return;
     } else {
+        /**
+         结构体，用于存储动态链接器加载的模块
+         const char *dli_fname：模块的路径名，即文件名。
+         void *dli_fbase：模块的基址，即模块在内存中的起始地址。
+         */
         Dl_info info;
+        //dladdr 函数通过传递指向 _sharedInstance 的指针和一个 Dl_info 结构体的指针来填充 Dl_info 结构体，从而获取到了当前可执行文件的信息，特别是基址信息，用于后续的操作。
         dladdr(&_sharedInstance, &info);
 
 #ifdef __LP64__
+        //addr 变量用于存储某些地址值
         uint64_t addr = 0;
+        //mach_header 的值被设置为模块的基址，用作后续操作中的参考值。
         const uint64_t mach_header = (uint64_t) info.dli_fbase;
+        //获取当前可执行文件中名为 "hm_export_class" 的 __DATA 段的信息，并将其赋值给 section 变量，以供后续使用。
         const struct section_64 *section = getsectbynamefromheader_64((void *) mach_header, "__DATA", "hm_export_class");
 #else
         uint32_t addr = 0; const uint32_t mach_header = (uint32_t)info.dli_fbase;
@@ -105,9 +114,18 @@ static id _sharedInstance = nil;
                 if (!clazz) {
                     return;
                 }
+                /*
+                 *调用 `class_getSuperclass(clazz)` 来获取 `clazz` 的父类。
+                 * 将返回的父类赋值给 `clazz`，以便在下一次循环迭代中处理这个新的父类。
+                 * `(void)` 是一个类型转换，用于忽略逗号表达式的值（在这里是新的 `clazz` 的值），因为 `while` 循环只需要检查后面的条件 `clazz && clazz != NSObject.class`。
+                 * `clazz && clazz != NSObject.class` 确保 `clazz` 不是 `nil` 并且它不等于 `NSObject` 类。
+                 */
                 while ((void) (clazz = class_getSuperclass(clazz)), clazz && clazz != NSObject.class) {
+                    //使用 `NSStringFromClass(clazz)` 获取当前 `clazz` 类的字符串表示（即类名）。
                     NSString *className = NSStringFromClass(clazz);
+                    //尝试从 `objcClassesMutableDictionary` 字典中使用这个类名作为键来查找对应的 `HMExportClass` 对象。
                     HMExportClass *exportClass = objcClassesMutableDictionary[className];
+                    //如果找到了 `HMExportClass` 对象（即 `exportClass` 不为 `nil`），则设置 `obj.superClassReference` 为这个 `exportClass` 并立即跳出循环。
                     if (exportClass) {
                         // 查找到了，停止循环
                         obj.superClassReference = exportClass;

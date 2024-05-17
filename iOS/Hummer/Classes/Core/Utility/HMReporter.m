@@ -18,6 +18,7 @@
 
 @implementation HMReporter
 
+//这段代码是用于性能报告和指标报告的，通过 HMReporter 类的方法来收集和传递数据，然后通过 HMReporterInterceptor 处理并报告给其他地方使用。
 + (void)reportPerformanceWithBlock:(void (^)(dispatch_block_t _Nonnull))excuteBlock
                             forKey:(NSString *)reportKey namespace:(nonnull NSString *)namespace{
     if (!excuteBlock || reportKey.length == 0) { return; }

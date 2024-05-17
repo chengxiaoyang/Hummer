@@ -151,6 +151,7 @@ NS_ASSUME_NONNULL_END
     [self injectBuiltInJS];
 }
 - (void)setupExecutor {
+    //原生引擎还是js引擎
     if(self.engineType == HMEngineTypeNAPI){
         [self trySetupNAPIExecutor];
     }else{
@@ -181,7 +182,7 @@ NS_ASSUME_NONNULL_END
     NSDataAsset *dataAsset = [[NSDataAsset alloc] initWithName:@"builtin" bundle:resourceBundle];
     NSAssert(dataAsset, @"builtin dataset 无法在 xcassets 中搜索到");
     NSString *jsString = [[NSString alloc] initWithData:dataAsset.data encoding:NSUTF8StringEncoding];
-    [_context evaluateScript:jsString withSourceURL:[NSURL URLWithString:@"https://www.didi.com/hummer/builtin.js"]];
+    [_context evaluateScript:jsString withSourceURL:[NSURL URLWithString:@"https://www.123.com/hummer/builtin1.js"]];
     
     NSMutableDictionary *classes = [NSMutableDictionary new];
     // 可以使用模型替代字典，转 JSON，做缓存

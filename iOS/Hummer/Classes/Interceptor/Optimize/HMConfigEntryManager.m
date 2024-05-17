@@ -339,7 +339,7 @@ NSString * const HMDefaultNamespaceUnderline = @"namespace_hummer_default";
     
 }
 + (void)handleJSPerformanceWithKey:(NSString *)key info:(NSDictionary *)info namespace:(nonnull NSString *)namespace{
-    // 兼容老拦截器
+    // 兼容老拦截器，发现没有内容，没有上传日志呀
     NSArray<id<HMReporterProtocol>> *interceptors = [HMInterceptor interceptor:HMInterceptorTypeReporter];
     if (interceptors.count <= 0) {
         return;

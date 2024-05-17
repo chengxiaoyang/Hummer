@@ -109,6 +109,14 @@ static JSContextGroupRef _Nullable virtualMachineRef = NULL;
 
 NS_ASSUME_NONNULL_END
 
+/**
+ ctx：JavaScript 上下文对象。
+ function：表示 JavaScript 函数对象的引用。
+ thisObject：表示调用 JavaScript 函数的对象的引用。
+ argumentCount：表示传递给 JavaScript 函数的参数数量。
+ arguments：表示传递给 JavaScript 函数的参数数组。
+ exception：如果在执行函数时发生错误，可以设置此参数以传递异常信息。
+ */
 JSValueRef _Nullable nativeLoggingHook(JSContextRef ctx, JSObjectRef function, JSObjectRef thisObject, size_t argumentCount, const JSValueRef _Nonnull arguments[], JSValueRef *exception) {
     HMAssertMainQueue();
     if (argumentCount != 2) {
@@ -182,6 +190,7 @@ JSValueRef _Nullable hummerCall(JSContextRef ctx, JSObjectRef function, JSObject
     return [executor hummerCallNativeWithArgumentCount:argumentCount arguments:arguments target:target selector:selector methodSignature:methodSignature];
 }
 
+//这个函数似乎是为了便捷地创建与 Objective-C 类对应的 JavaScript 对象，包括处理构造函数参数和在 JavaScript 和 Objective-C 类型之间进行桥接。
 JSValueRef _Nullable hummerCreate(JSContextRef ctx, JSObjectRef function, JSObjectRef thisObject, size_t argumentCount, const JSValueRef _Nonnull arguments[], JSValueRef *exception) {
     HMAssertMainQueue();
     if (argumentCount < 2) {
@@ -364,24 +373,35 @@ void hummerFinalize(JSObjectRef object) {
     if (!virtualMachineRef) {
         virtualMachineRef = JSContextGroupCreate();
     }
+    //创建了一个 JavaScript 执行上下文（_contextRef）。
     _contextRef = JSGlobalContextCreateInGroup(virtualMachineRef, NULL);
+    //初始化了两个 NSMapTable（_exceptionHandlerMap 和 _consoleHandlerMap）。
     _exceptionHandlerMap = [NSMapTable mapTableWithKeyOptions:NSPointerFunctionsWeakMemory valueOptions:NSPointerFunctionsStrongMemory];
     _consoleHandlerMap = [NSMapTable mapTableWithKeyOptions:NSPointerFunctionsWeakMemory valueOptions:NSPointerFunctionsStrongMemory];
 
 //    _contextRef = JSGlobalContextCreate(NULL);
+    //将当前实例（self）使用 JavaScript 上下文引用作为键存储在一个 Map Table（HMExecutorMap）中。
     [HMExecutorMap setObject:self forKey:[NSValue valueWithPointer:_contextRef]];
 
     // 注入对象
     // JSStringCreateWithUTF8CString 传入 NULL 会创建空字符串
+    //使用 JSStringCreateWithUTF8CString 函数创建了几个 JavaScript 字符串，用于命名各种功能和回调函数。
     JSStringRef hummerCallString = JSStringCreateWithUTF8CString("hummerCall");
     JSStringRef hummerCreateString = JSStringCreateWithUTF8CString("hummerCreate");
     JSStringRef hummerGetPropertyString = JSStringCreateWithUTF8CString("hummerGetProperty");
     JSStringRef hummerSetPropertyString = JSStringCreateWithUTF8CString("hummerSetProperty");
     JSStringRef hummerCallFunctionString = JSStringCreateWithUTF8CString("hummerCallFunction");
     JSStringRef nativeLoggingHookStringRef = JSStringCreateWithUTF8CString("nativeLoggingHook");
+    //使用 JSContextGetGlobalObject 函数获取了 JavaScript 上下文中的全局对象。
     JSObjectRef globalThis = JSContextGetGlobalObject(_contextRef);
 
-    // 匿名函数
+    //将这些 JavaScript 函数设置为 JavaScript 上下文中全局对象的属性。
+    //使用 JSObjectMakeFunctionWithCallback 函数，为每个功能或回调函数创建了相应的 JavaScript 函数对象。这些函数对象是通过 C 回调函数实现的。
+    /**
+     ctx：JavaScript 上下文对象，表示要创建函数的上下文。
+     name：JavaScript 字符串对象，表示要创建的函数的名称。如果为 NULL，则表示创建一个匿名函数。
+     callAsFunction：C 回调函数指针，表示 JavaScript 函数被调用时要执行的函数。
+     */
     JSObjectRef nativeLoggingHookFunction = JSObjectMakeFunctionWithCallback(_contextRef, NULL, &nativeLoggingHook);
     JSObjectRef inlineHummerCallFunction = JSObjectMakeFunctionWithCallback(_contextRef, NULL, &hummerCall);
     JSObjectRef hummerCreateFunction = JSObjectMakeFunctionWithCallback(_contextRef, NULL, &hummerCreate);
@@ -391,6 +411,20 @@ void hummerFinalize(JSObjectRef object) {
     JSValueRef exception = NULL;
     JSObjectSetProperty(_contextRef, globalThis, nativeLoggingHookStringRef, nativeLoggingHookFunction, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete, &exception);
     [self popExceptionWithErrorObject:&exception];
+    //使用 JSObjectSetProperty 函数将创建的 JavaScript 函数设置为全局对象的属性。
+    //每个 JavaScript 函数都被设置为全局对象的一个属性，以便在 JavaScript 代码中调用这些功能。
+    /**
+     ctx：JavaScript 上下文对象，表示要设置属性的上下文。
+     object：JavaScript 对象，表示要设置属性的对象。
+     propertyName：JavaScript 字符串对象，表示要设置的属性的名称。
+     value：JavaScript 值对象，表示要设置的属性值。
+     attributes：属性的特性，可以是以下值的组合：
+     kJSPropertyAttributeNone：无特性。
+     kJSPropertyAttributeReadOnly：只读属性。
+     kJSPropertyAttributeDontEnum：不可枚举属性。
+     kJSPropertyAttributeDontDelete：不可删除属性。
+     exception：如果设置属性时发生错误，会将异常信息存储在这个指针指向的位置。如果不想处理异常，可以传入 NULL。
+     */
     JSObjectSetProperty(_contextRef, globalThis, hummerCallString, inlineHummerCallFunction, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete, &exception);
     // 初始化过程 exceptionHandler 一定不存在，因此可以会打到日志里
     [self popExceptionWithErrorObject:&exception];
@@ -402,6 +436,7 @@ void hummerFinalize(JSObjectRef object) {
     [self popExceptionWithErrorObject:&exception];
     JSObjectSetProperty(_contextRef, globalThis, hummerCallFunctionString, hummerCallFunctionFunction, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete, &exception);
     [self popExceptionWithErrorObject:&exception];
+    //使用 JSStringRelease 函数释放了创建的 JavaScript 字符串的内存。
     JSStringRelease(nativeLoggingHookStringRef);
     JSStringRelease(hummerCallString);
     JSStringRelease(hummerCreateString);
@@ -422,7 +457,9 @@ void hummerFinalize(JSObjectRef object) {
     if (script.length == 0) {
         return nil;
     }
+    //创建一个 JSStringRef 类型的 JavaScript 字符串引用
     JSStringRef scriptRef = JSStringCreateWithUTF8CString(script.UTF8String);
+    //这个源 URL 可能会被某些调试工具或错误报告机制用来标识脚本的来源。
     JSStringRef sourceRef = NULL;
     if (sourceUrl.absoluteString.length > 0) {
         sourceRef = JSStringCreateWithUTF8CString(sourceUrl.absoluteString.UTF8String);
@@ -431,11 +468,13 @@ void hummerFinalize(JSObjectRef object) {
     // 第一行开始，this 指针为 NULL，则使用 globalThis
     // 对于 JavaScriptCore，没提供 sourceURL，则不会在 Safari 中显示文件，如果是 Hermes，则会告知 Chrome 有 '' 文件
     // 对于低版本 JavaScriptCore，同名文件会被覆盖，高版本则不会覆盖，会显示两个文件
+    //使用 JSEvaluateScript 函数来执行脚本。该函数的第一个参数是上下文引用，第二个参数是脚本引用，第三个参数是 this 对象的引用（在这里为 NULL），第四个参数是源 URL 引用（如果存在），第五个参数是一个布尔值（在这里为 1，但在其他情况下可能是一个表示是否报告异常的 BOOL 值），最后一个参数是一个指向 JSValueRef 的指针，用于接收可能发生的异常。
     JSValueRef result = JSEvaluateScript(self.contextRef, scriptRef, NULL, sourceRef, 1, &exception);
     JSStringRelease(scriptRef);
     if (sourceRef) {
         JSStringRelease(sourceRef);
     }
+    //从 JavaScript 环境中获取异常信息，并将其转换为 Objective-C 对象，以便在 Objective-C 代码中进行进一步处理和记录。
     if ([self popExceptionWithErrorObject:&exception]) {
         return nil;
     }
@@ -447,14 +486,20 @@ void hummerFinalize(JSObjectRef object) {
     }
 }
 
+//这段代码定义了一个 Objective-C 方法，用于从 JavaScript 对象中提取导出的方法或属性，并将其映射到 Objective-C 对象的目标方法或属性上。
 - (void)hummerExtractExportWithFunctionPropertyName:(nullable NSString *)functionPropertyName objectRef:(nullable JSObjectRef)objectRef target:(id _Nullable *)target selector:(SEL _Nullable *)selector methodSignature:(NSMethodSignature *_Nullable *)methodSignature isSetter:(BOOL)isSetter jsClassName:(nullable NSString *)jsClassName {
+    //函数开头调用了 HMAssertMainQueue()，用于确保该方法在主线程中执行。
     HMAssertMainQueue();
+    //检查传入的目标对象 (target)、选择器 (selector)、方法签名 (methodSignature)、函数属性名称 (functionPropertyName) 和 JavaScript 类名 (jsClassName) 是否都有效。如果有任何一个参数为 nil 或者字符串长度为零，则直接返回，不进行后续操作。
     if (!target || !selector || !methodSignature || functionPropertyName.length == 0 || jsClassName.length == 0) {
         return;
     }
+    //从全局的导出类管理器 (HMExportManager) 中获取指定 JavaScript 类名 (jsClassName) 对应的导出类信息 (HMExportClass)。
     HMExportClass *exportClass = HMExportManager.sharedInstance.jsClasses[jsClassName];
     HMExportBaseClass *exportBaseClass = nil;
+    //根据传入的对象引用 (objectRef) 是否为空来确定目标对象
     if (!objectRef) {
+        //如果为空，则表示操作的是类级别的方法或属性，此时根据导出类信息中的类名创建对应的类对象并赋值给 target；
         // class
         if (exportClass.className.length == 0) {
             HMLogError(HUMMER_CREATE_CLASS_NOT_FOUND, jsClassName);
@@ -464,6 +509,7 @@ void hummerFinalize(JSObjectRef object) {
         (*target) = NSClassFromString(exportClass.className);
         exportBaseClass = [exportClass methodOrPropertyWithName:functionPropertyName isClass:YES];
     } else {
+        //如果不为空，则表示操作的是实例级别的方法或属性，此时从 JavaScript 对象的不透明指针中获取原生对象，并赋值给 target。
         // instance
         // 获取不透明指针
         void *opaquePointer = JSObjectGetPrivate(objectRef);
@@ -476,12 +522,14 @@ void hummerFinalize(JSObjectRef object) {
     }
     if ([exportBaseClass isKindOfClass:HMExportMethod.class]) {
         // 方法
+        //如果是方法，则根据是否为类方法来获取选择器和方法签名。
         HMExportMethod *exportMethod = (HMExportMethod *) exportBaseClass;
         (*selector) = exportMethod.selector;
         (*methodSignature) = !objectRef ? [*target methodSignatureForSelector:exportMethod.selector] : [[(*target) class] instanceMethodSignatureForSelector:exportMethod.selector];
     } else {
         // 属性
         // isSetter 只有属性才生效
+        //如果是属性，则根据是否为设置方法 (isSetter) 来获取选择器和方法签名。
         HMExportProperty *exportProperty = (HMExportProperty *) exportBaseClass;
         (*selector) = isSetter ? exportProperty.propertySetterSelector : exportProperty.propertyGetterSelector;
         (*methodSignature) = !objectRef ? [*target methodSignatureForSelector:(*selector)] : [[(*target) class] instanceMethodSignatureForSelector:(*selector)];
@@ -860,41 +908,49 @@ void hummerFinalize(JSObjectRef object) {
     return [self convertValueRefToString:strongValue.valueRef isForce:isForce];
 }
 
+//将 JavaScript 中的 JSValueRef 类型的值转换为 Objective-C 中的 NSString 类型。
 - (nullable NSString *)convertValueRefToString:(JSValueRef)valueRef isForce:(BOOL)isForce {
+    //用于确保该方法在主线程中执行。
     HMAssertMainQueue();
     // JSValueToStringCopy 有慢路径，因此先判断
+    //如果 isForce 参数为 NO，并且传入的 valueRef 不是 JavaScript 字符串类型，则直接返回 nil。这个检查可能用于优化性能，避免不必要的转换操作。
     if (!isForce && !JSValueIsString(self.contextRef, valueRef)) {
         return nil;
     }
+    //调用 JSValueToStringCopy 函数将 valueRef 转换为 JavaScript 字符串对象。如果转换过程中出现异常或者返回的字符串对象为空，则直接返回 nil。
     JSValueRef exception = NULL;
     JSStringRef stringRef = JSValueToStringCopy(self.contextRef, valueRef, &exception);
     // 空指针会返回 "" 空字符串，因此最好先判断一下
     if (exception || !stringRef) {
         return nil;
     }
+    //通过 JSStringCopyCFString 函数将 JavaScript 字符串对象转换为 Core Foundation 字符串对象，然后通过 CFBridgingRelease 函数转换为 Objective-C 字符串对象，并释放原有的 Core Foundation 字符串对象。
     NSString *stringValue = CFBridgingRelease(JSStringCopyCFString(kCFAllocatorDefault, stringRef));
     JSStringRelease(stringRef);
 
     return stringValue;
 }
 
+//用于将 JavaScript 值（JSValueRef）转换为 NSNumber 对象的方法。在 JavaScriptCore 框架中，JavaScript 值可以是各种类型，包括数字、布尔值、字符串、对象等。这个方法专门处理 JavaScript 中的数字类型值。
+//提供一个便捷的方式，用于从 JavaScript 环境中获取数字值，并将其转换为 Objective-C 中的 NSNumber 对象，以便在 Objective-C 代码中进行进一步处理。
 - (nullable NSNumber *)convertValueRefToNumber:(JSValueRef)valueRef isForce:(BOOL)isForce {
-    HMAssertMainQueue();
-    if (JSValueIsBoolean(self.contextRef, valueRef)) {
-        bool boolValue = JSValueToBoolean(self.contextRef, valueRef);
+    HMAssertMainQueue(); // 断言当前为主线程
+    if (JSValueIsBoolean(self.contextRef, valueRef)) { // 如果值是布尔类型
+        bool boolValue = JSValueToBoolean(self.contextRef, valueRef); // 将JS布尔值转换为C的布尔值
 
-        return @(boolValue);
-    } else if (!isForce && !JSValueIsNumber(self.contextRef, valueRef)) {
-        return nil;
-    } else {
+        return @(boolValue); // 返回NSNumber包装的布尔值
+    } else if (!isForce && !JSValueIsNumber(self.contextRef, valueRef)) { // 如果不是强制转换且值不是数字类型
+        return nil; // 返回空
+    } else { // 否则
         // new Number() 是对象不是数字
-        double numberValue = JSValueToNumber(self.contextRef, valueRef, NULL);
+        double numberValue = JSValueToNumber(self.contextRef, valueRef, NULL); // 将JS值转换为双精度浮点数
 
-        return @(numberValue);
+        return @(numberValue); // 返回NSNumber包装的数字
     }
 
-    return nil;
+    return nil; // 默认返回空
 }
+
 
 - (nullable NSObject *)convertValueRefToNativeObject:(nullable JSValueRef)valueRef {
     HMAssertMainQueue();
@@ -929,75 +985,76 @@ void hummerFinalize(JSObjectRef object) {
 }
 
 - (BOOL)popExceptionWithErrorObject:(JSValueRef _Nullable *_Nullable)errorObject {
-    HMAssertMainQueue();
-    if (!errorObject || !*errorObject) {
+    HMAssertMainQueue(); // 断言当前为主线程
+    if (!errorObject || !*errorObject) { // 如果errorObject为空或者指向的值为空，则返回NO
         return NO;
     }
-    if (!self.contextRef) {
-        HMLogError(@"Executor 初始化过程出错");
+    if (!self.contextRef) { // 如果上下文引用为空
+        HMLogError(@"Executor 初始化过程出错"); // 记录错误日志
     }
     // JSValueIsObject -> toJS 会断言当前 valueRef 如果是对象，则必须属于当前 VM Heap
     // 因此 contextRef 必须存在
-    if (!JSValueIsObject(self.contextRef, *errorObject)) {
-        HMLogWarning(@"valueRef 参数不是 object");
-
+    if (!JSValueIsObject(self.contextRef, *errorObject)) { // 如果errorObject不是JavaScript对象
+        HMLogWarning(@"valueRef 参数不是 object"); // 记录警告日志
         return NO;
     }
-    JSValueRef exception = NULL;
-    JSObjectRef objectRef = JSValueToObject(self.contextRef, *errorObject, &exception);
-    if (exception || !objectRef) {
-        HMLogError(@"valueRef 转换 JSObjectRef 失败");
-
+    JSValueRef exception = NULL; // 异常变量初始化为NULL
+    JSObjectRef objectRef = JSValueToObject(self.contextRef, *errorObject, &exception); // 将JS值转换为JavaScript对象
+    if (exception || !objectRef) { // 如果转换过程中发生异常或者转换结果为空
+        HMLogError(@"valueRef 转换 JSObjectRef 失败"); // 记录错误日志
         return NO;
     }
-    JSStringRef columnString = JSStringCreateWithUTF8CString("column");
-    JSStringRef lineString = JSStringCreateWithUTF8CString("line");
-    JSStringRef messageString = JSStringCreateWithUTF8CString("message");
-    JSStringRef nameString = JSStringCreateWithUTF8CString("name");
-    JSStringRef stackString = JSStringCreateWithUTF8CString("stack");
+    // 以下代码用于从JavaScript对象中获取列、行、消息、名称和堆栈信息
+    JSStringRef columnString = JSStringCreateWithUTF8CString("column"); // 列键名
+    JSStringRef lineString = JSStringCreateWithUTF8CString("line"); // 行键名
+    JSStringRef messageString = JSStringCreateWithUTF8CString("message"); // 消息键名
+    JSStringRef nameString = JSStringCreateWithUTF8CString("name"); // 名称键名
+    JSStringRef stackString = JSStringCreateWithUTF8CString("stack"); // 堆栈键名
 
-    JSValueRef columnValueRef = JSObjectGetProperty(self.contextRef, objectRef, columnString, &exception);
+    JSValueRef columnValueRef = JSObjectGetProperty(self.contextRef, objectRef, columnString, &exception); // 获取列值
     // 不需要判断 columnValueRef
-    if (exception) {
-        HMLogError(EXCEPTION_HANDLER_ERROR);
+    if (exception) { // 如果在获取列值时发生异常
+        HMLogError(EXCEPTION_HANDLER_ERROR); // 记录错误日志
     }
     exception = NULL;
-    JSValueRef lineValueRef = JSObjectGetProperty(self.contextRef, objectRef, lineString, &exception);
-    if (exception) {
-        HMLogError(EXCEPTION_HANDLER_ERROR);
+    JSValueRef lineValueRef = JSObjectGetProperty(self.contextRef, objectRef, lineString, &exception); // 获取行值
+    if (exception) { // 如果在获取行值时发生异常
+        HMLogError(EXCEPTION_HANDLER_ERROR); // 记录错误日志
     }
     exception = NULL;
-    JSValueRef messageValueRef = JSObjectGetProperty(self.contextRef, objectRef, messageString, &exception);
-    if (exception) {
-        HMLogError(EXCEPTION_HANDLER_ERROR);
+    JSValueRef messageValueRef = JSObjectGetProperty(self.contextRef, objectRef, messageString, &exception); // 获取消息值
+    if (exception) { // 如果在获取消息值时发生异常
+        HMLogError(EXCEPTION_HANDLER_ERROR); // 记录错误日志
     }
     exception = NULL;
-    JSValueRef nameValueRef = JSObjectGetProperty(self.contextRef, objectRef, nameString, &exception);
-    if (exception) {
-        HMLogError(EXCEPTION_HANDLER_ERROR);
+    JSValueRef nameValueRef = JSObjectGetProperty(self.contextRef, objectRef, nameString, &exception); // 获取名称值
+    if (exception) { // 如果在获取名称值时发生异常
+        HMLogError(EXCEPTION_HANDLER_ERROR); // 记录错误日志
     }
     exception = NULL;
-    JSValueRef stackValueRef = JSObjectGetProperty(self.contextRef, objectRef, stackString, &exception);
-    if (exception) {
-        HMLogError(EXCEPTION_HANDLER_ERROR);
+    JSValueRef stackValueRef = JSObjectGetProperty(self.contextRef, objectRef, stackString, &exception); // 获取堆栈值
+    if (exception) { // 如果在获取堆栈值时发生异常
+        HMLogError(EXCEPTION_HANDLER_ERROR); // 记录错误日志
     }
 
+    // 创建异常模型并填充相关信息
     HMExceptionModel *errorModel = [[HMExceptionModel alloc] init];
-    errorModel.column = [self convertValueRefToNumber:columnValueRef isForce:NO];
-    errorModel.line = [self convertValueRefToNumber:lineValueRef isForce:NO];
-    errorModel.message = [self convertValueRefToString:messageValueRef isForce:NO];
-    errorModel.name = [self convertValueRefToString:nameValueRef isForce:NO];
-    errorModel.stack = [self convertValueRefToString:stackValueRef isForce:NO];
+    errorModel.column = [self convertValueRefToNumber:columnValueRef isForce:NO]; // 列
+    errorModel.line = [self convertValueRefToNumber:lineValueRef isForce:NO]; // 行
+    errorModel.message = [self convertValueRefToString:messageValueRef isForce:NO]; // 消息
+    errorModel.name = [self convertValueRefToString:nameValueRef isForce:NO]; // 名称
+    errorModel.stack = [self convertValueRefToString:stackValueRef isForce:NO]; // 堆栈
 
-    [self triggerExceptionHandler:errorModel];
-    JSStringRelease(columnString);
-    JSStringRelease(lineString);
-    JSStringRelease(messageString);
-    JSStringRelease(nameString);
-    JSStringRelease(stackString);
+    [self triggerExceptionHandler:errorModel]; // 触发异常处理程序
+    JSStringRelease(columnString); // 释放列键名
+    JSStringRelease(lineString); // 释放行键名
+    JSStringRelease(messageString); // 释放消息键名
+    JSStringRelease(nameString); // 释放名称键名
+    JSStringRelease(stackString); // 释放堆栈键名
 
-    return YES;
+    return YES; // 返回处理成功
 }
+
 
 - (BOOL)compareWithValue:(HMBaseValue *)value anotherValue:(HMBaseValue *)anotherValue {
     // 仿照原生 [object isEqual:anotherObject]，如果 object 为空，最终为 NO

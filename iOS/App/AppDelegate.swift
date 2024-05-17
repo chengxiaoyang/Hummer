@@ -15,9 +15,12 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
         // Override point for customization after application launch.
-        Hummer.startEngine(nil)
+        Hummer.startEngine()
+//        Hummer.startEngine { entry in
+//            print(entry)
+//        }
         window = UIWindow(frame: UIScreen.main.bounds)
-        guard let viewController = ViewController(url: "http://localhost:8000/index.js", params: nil) else { return true }
+        let viewController = ViewController(url: "http://192.168.1.88:8000/index.js", params: ["a":"a"])
         let navigationController = UINavigationController(rootViewController: viewController)
         navigationController.navigationBar.isTranslucent = false;
         window?.rootViewController = navigationController;

@@ -21,6 +21,8 @@
 
 @implementation HMDevServiceSession
 
+//初始化了 HMDevService 实例，创建了一个 HMDevServiceSession 实例和一些其他属性。
+
 - (instancetype)init {
     self = [super init];
     if (self) {
@@ -34,6 +36,7 @@
     return self;
 }
 
+//方法用于向指定的 URL 发送请求，并在请求完成后调用指定的回调块。
 - (void)requesWithUrl:(id<HMURLConvertible>)url completionHandler:(void (^)(id _Nullable, NSError * _Nullable))callback {
     
     NSURLRequest *req = [NSURLRequest requestWithURL:[url hm_asUrl]];
@@ -84,6 +87,7 @@
     return ins;
 }
 
+//方法根据传入的页面 URL，尝试获取本地连接对象。如果页面 URL 符合特定条件，则尝试建立本地 WebSocket 连接。
 - (nullable HMDevLocalConnection *)getLocalConnection:(id<HMURLConvertible>)pageUrl {
     
     NSURL *url = [pageUrl hm_asUrl];
@@ -113,7 +117,7 @@
     return nil;
 }
 
-
+//方法用于检查给定的 URL 是否是开发环境的 URL。它发送一个请求到指定的 URL，如果返回的数据中包含特定的字段，则认为是开发环境。
 - (BOOL)isDevUrl:(NSString *)urlString {
     
     dispatch_semaphore_t lock = dispatch_semaphore_create(0);
@@ -131,6 +135,7 @@
     return isDev;
 }
 
+//方法用于关闭指定的 WebSocket 连接，并从字典中移除相应的连接
 - (void)closeWebSocket:(HMDevGlobalWebSocket *)webSocket {
     [self.nativeWSConnections removeObjectForKey:[webSocket.wsURL hm_asString]];
 }

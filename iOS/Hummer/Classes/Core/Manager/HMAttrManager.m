@@ -11,16 +11,20 @@
 #import <objc/runtime.h>
 #import <objc/message.h>
 
+//这个类用于表示视图属性和 CSS 样式属性之间的对应关系。
 @interface HMViewAttribute()
-
+//视图属性名称
 @property (nonatomic, strong) NSString *viewProp;
+//CSS 样式属性名称
 @property (nonatomic, strong) NSString *cssAttr;
+//属性转换的方法选择器
 @property (nonatomic, assign) SEL converter;
 
 @end
 
 @implementation HMViewAttribute
 
+//方法初始化对象
 - (instancetype)initWithProperty:(NSString *)viewProp
                          cssAttr:(NSString *)cssAttr
                        converter:(SEL)converter {
@@ -33,6 +37,7 @@
     return self;
 }
 
+//方法简化创建实例的过程。
 + (instancetype)viewAttrWithName:(NSString *)viewProp
                          cssAttr:(NSString *)cssAttr
                        converter:(SEL)converter {
@@ -87,6 +92,7 @@ static HMAttrManager * __sharedInstance = nil;
     return _classes;
 }
 
+//方法加载指定类的视图属性
 - (void)loadViewAttrForClass:(Class)clazz {
     if (!clazz || ![clazz isSubclassOfClass:[UIView class]]) return;
     
@@ -96,6 +102,7 @@ static HMAttrManager * __sharedInstance = nil;
     }
 }
 
+//递归加载指定类及其父类的视图属性。
 - (void)loadAllAttrWithClass:(Class)cls {
     if (cls != [UIView class]) {
         Class superCls = class_getSuperclass(cls);
@@ -104,6 +111,7 @@ static HMAttrManager * __sharedInstance = nil;
     [self addViewAttrForClass:cls];
 }
 
+//方法解析指定类的方法列表，提取以 __hm_view_attribute_ 开头的方法，并将其返回的 HMViewAttribute 对象中的 CSS 属性添加到映射字典中。
 - (void)addViewAttrForClass:(Class)clazz {
     if (!clazz || ![clazz isSubclassOfClass:[UIView class]]) return;
     
@@ -121,6 +129,7 @@ static HMAttrManager * __sharedInstance = nil;
     if (methods) free(methods);
 }
 
+//方法根据 CSS 属性名称获取对应的转换方法选择器。
 - (SEL)converterWithCSSAttr:(NSString *)cssAttr {
     if (!cssAttr) return nil;
     
@@ -128,6 +137,7 @@ static HMAttrManager * __sharedInstance = nil;
     return object.converter;
 }
 
+//方法根据 CSS 属性名称获取对应的视图属性名称。
 - (NSString *)viewPropWithCSSAttr:(NSString *)cssAttr {
     if (!cssAttr) return nil;
     

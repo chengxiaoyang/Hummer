@@ -194,6 +194,8 @@ HM_EXPORT_CLASS_METHOD(postException, postException:)
     self = [super init];
     NSPointerFunctionsOptions weakOption = NSPointerFunctionsWeakMemory |
             NSPointerFunctionsObjectPersonality;
+    //keyOptions 和 valueOptions 都设置为 weakOption，这意味着键和值都将使用弱引用来存储。
+    //capacity 设置为 0，表示初始容量将基于后续添加的元素数量动态确定。pageInfo
     _contextGraph = [[NSMapTable alloc] initWithKeyOptions:weakOption
                                               valueOptions:weakOption
                                                   capacity:0];
