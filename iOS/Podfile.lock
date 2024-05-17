@@ -1,11 +1,6 @@
 PODS:
   - Hummer/Core (0.2.8):
     - SocketRocket (~> 0.1)
-  - Hummer/Hermes (0.2.8):
-    - Hummer/Core
-    - Hummer/N-API
-    - SocketRocket (~> 0.1)
-  - Hummer/N-API (0.2.8)
   - Hummer/OSSYoga (0.2.8):
     - Hummer/Core
     - Yoga (~> 1.14)
@@ -15,7 +10,6 @@ PODS:
   - Yoga (1.14.0)
 
 DEPENDENCIES:
-  - Hummer/Hermes (from `..`)
   - Hummer/OSSYoga (from `..`)
   - Nimble (~> 9.0)
   - Quick (~> 4.0)
@@ -33,12 +27,12 @@ EXTERNAL SOURCES:
     :path: ".."
 
 SPEC CHECKSUMS:
-  Hummer: 41d89137b5e56cc0877c9a415dd5d679dd2c10e9
+  Hummer: 9c8a2da51f6db01191a05dc751fe9cc05ba8ea27
   Nimble: 4f4a345c80b503b3ea13606a4f98405974ee4d0b
   Quick: 6473349e43b9271a8d43839d9ba1c442ed1b7ac4
   SocketRocket: fccef3f9c5cedea1353a9ef6ada904fde10d6608
   Yoga: cff67a400f6b74dc38eb0bad4f156673d9aa980c
 
-PODFILE CHECKSUM: ff3d844291649acb5ce892882d1c499a88f42db3
+PODFILE CHECKSUM: 8f9ed695500cdf76b78cd8e44b147f11b4e4c49c
 
-COCOAPODS: 1.11.2
+COCOAPODS: 1.15.2
